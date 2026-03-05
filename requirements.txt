@@ -1,0 +1,7 @@
+tensorflow>=2.10.0
+mediapipe>=0.10.0
+opencv-python>=4.8.0
+numpy>=1.23.0
+google-generativeai>=0.3.0
+scikit-learn>=1.2.0
+matplotlib>=3.7.0
