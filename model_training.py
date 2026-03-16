@@ -1,59 +1,113 @@
-import numpy as np
+# ============================================================
+# MUST BE FIRST — before any imports
+# ============================================================
 import os
-from sklearn.model_selection import train_test_split
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Bidirectional, Dropout, BatchNormalization
-from tensorflow.keras.callbacks import TensorBoard, EarlyStopping
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
-# --- 1. LOAD MASTER TENSORS ---
-# Ensure these files are in your current directory
-X = np.load('X_train.npy')
-y = np.load('y_train.npy')
+import numpy as np
+from keras.models import Sequential
+from keras.layers import LSTM, Dense, Bidirectional, Dropout, BatchNormalization, Input
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
-# --- 2. TRAIN-TEST SPLIT ---
-# 80% to train, 20% to test. 'stratify' ensures labels are balanced in both sets.
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+# ============================================================
+# CONFIGURATION
+# ============================================================
+OUTPUT_PATH = r"/content/drive/MyDrive/FYP NEW/Codes"
 
-print(f"Total Samples: {len(X)}")
-print(f"Training on: {len(X_train)} samples")
-print(f"Testing on: {len(X_test)} samples")
+# ============================================================
+# 1. LOAD
+# ============================================================
+X_train = np.load(os.path.join(OUTPUT_PATH, 'X_train.npy'))
+y_train = np.load(os.path.join(OUTPUT_PATH, 'y_train.npy'))
+X_test  = np.load(os.path.join(OUTPUT_PATH, 'X_test.npy'))
+y_test  = np.load(os.path.join(OUTPUT_PATH, 'y_test.npy'))
 
-# --- 3. BiLSTM MODEL ARCHITECTURE ---
-# Input shape: (30 frames, 258 landmarks)
+print(f"X_train : {X_train.shape}")
+print(f"y_train : {y_train.shape}")
+print(f"X_test  : {X_test.shape}")
+print(f"y_test  : {y_test.shape}")
+print(f"\nTraining samples : {len(X_train)}")
+print(f"Testing samples  : {len(X_test)}  ← unseen, no augmentation")
+
+num_classes = y_train.shape[1]
+
+# ============================================================
+# 2. MODEL
+# ============================================================
 model = Sequential([
-    Bidirectional(LSTM(64, return_sequences=True, activation='relu'), input_shape=(30, 258)),
-    Dropout(0.2),
-    
-    Bidirectional(LSTM(128, return_sequences=True, activation='relu')),
-    Dropout(0.2),
-    
-    Bidirectional(LSTM(64, return_sequences=False, activation='relu')),
+    Input(shape=(X_train.shape[1], X_train.shape[2])),
+    Bidirectional(LSTM(64, return_sequences=True, activation='tanh')),
+    Dropout(0.3),
+    Bidirectional(LSTM(128, return_sequences=True, activation='tanh')),
+    Dropout(0.3),
+    Bidirectional(LSTM(64, return_sequences=False, activation='tanh')),
     BatchNormalization(),
-    
     Dense(64, activation='relu'),
     Dropout(0.3),
-    Dense(y.shape[1], activation='softmax') # y.shape[1] is the number of words (classes)
+    Dense(num_classes, activation='softmax')
 ])
 
-model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['categorical_accuracy'])
+model.summary()
 
-# --- 4. TRAINING ---
-# EarlyStopping stops training if the model stops improving, preventing overfitting.
-early_stop = EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)
-
-print("\nStarting Training...")
-history = model.fit(
-    X_train, y_train, 
-    epochs=100, 
-    batch_size=32, 
-    validation_data=(X_test, y_test),
-    callbacks=[early_stop]
+model.compile(
+    optimizer='adam',
+    loss='categorical_crossentropy',
+    metrics=['categorical_accuracy']
 )
 
-# --- 5. FINAL EVALUATION ---
-res = model.predict(X_test)
-print(f"\nModel Accuracy on Test Data: {history.history['categorical_accuracy'][-1] * 100:.2f}%")
+# ============================================================
+# 3. CALLBACKS
+# ============================================================
+early_stop = EarlyStopping(
+    monitor='val_loss',
+    patience=15,
+    restore_best_weights=True,
+    verbose=1
+)
 
-# Save the brain
-model.save('sign_language_model.h5')
-print("Model saved as 'sign_language_model.h5'")
+reduce_lr = ReduceLROnPlateau(
+    monitor='val_loss',
+    factor=0.5,
+    patience=5,
+    min_lr=0.00001,
+    verbose=1
+)
+
+# ============================================================
+# 4. TRAINING
+# ============================================================
+print("\nStarting training...")
+history = model.fit(
+    X_train, y_train,
+    epochs=100,
+    batch_size=32,
+    validation_data=(X_test, y_test),
+    callbacks=[early_stop, reduce_lr]
+)
+
+# ============================================================
+# 5. EVALUATION
+# ============================================================
+loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
+print(f"\n{'='*50}")
+print(f"TRUE Test Loss     : {loss:.4f}")
+print(f"TRUE Test Accuracy : {accuracy * 100:.2f}%")
+print(f"{'='*50}")
+
+# ============================================================
+# 6. SAVE — three formats
+# ============================================================
+# Format 1 — full model h5
+model.save(os.path.join(OUTPUT_PATH, 'signbridge_model.h5'))
+print("Saved: signbridge_model.h5")
+
+# Format 2 — weights h5
+model.save_weights(os.path.join(OUTPUT_PATH, 'signbridge_weights.weights.h5'))
+print("Saved: signbridge_weights.weights.h5")
+
+# Format 3 — numpy weights (most compatible across all Keras versions)
+weights = model.get_weights()
+np.save(os.path.join(OUTPUT_PATH, 'model_weights.npy'), np.array(weights, dtype=object))
+print("Saved: model_weights.npy")
+
+print("\n✅ Download model_weights.npy — works on any local Keras version")

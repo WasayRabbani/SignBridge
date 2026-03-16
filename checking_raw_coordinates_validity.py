@@ -1,10 +1,12 @@
-"""Visualize extracted landmarks from new format (144 values, one npy per video)"""
+"""Visualize extracted landmarks from new format (144 values, one npy per video)
+It shows npy coordinates in lamdmarks form"""
 # Claude
+
 import cv2
 import numpy as np
 
 # --- CONFIGURATION ---
-NPY_FILE = r"D:\Extracted\Water\18.npy" 
+NPY_FILE = r"D:\Extracted\Food\Food_1.npy"
 WIDTH, HEIGHT = 640, 480
 FPS_DELAY = 30  # milliseconds between frames
 

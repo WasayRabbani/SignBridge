@@ -1,3 +1,5 @@
+"""This check mp4 video whether elbow, hand,landmarks are visible or not"""
+
 import cv2
 import mediapipe as mp
 import os
@@ -90,7 +92,7 @@ def analyze_video_quality(video_path):
     return list(set(issues))
 
 # --- CONFIGURATION ---
-DATA_PATH = r"D:\Signs\Water"
+DATA_PATH = r"D:\Extracted\I\0.npy"
 
 if __name__ == "__main__":
     print(f"Scanning videos in: {DATA_PATH}...\n")
