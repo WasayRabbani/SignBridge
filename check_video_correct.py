@@ -92,7 +92,7 @@ def analyze_video_quality(video_path):
     return list(set(issues))
 
 # --- CONFIGURATION ---
-DATA_PATH = r"D:\Extracted\I\0.npy"
+DATA_PATH = r"D:\Signs\Key"
 
 if __name__ == "__main__":
     print(f"Scanning videos in: {DATA_PATH}...\n")

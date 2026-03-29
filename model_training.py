@@ -12,7 +12,7 @@ from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 # ============================================================
 # CONFIGURATION
 # ============================================================
-OUTPUT_PATH = r"/content/drive/MyDrive/FYP NEW/Codes"
+OUTPUT_PATH = r"D:\Preprocessed"
 
 # ============================================================
 # 1. LOAD

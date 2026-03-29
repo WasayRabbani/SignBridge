@@ -1,0 +1,25 @@
+1. check_video_correct: checks whether video is correctly shot. Checks video hands,pose landmarks
+
+2. checking_raw_coordinates_validity: Shows video's numpy array in video form like coordinates.
+
+3. checking_sequence: checks average sequence number of all videos. Helps in preprocessing, model training and testing
+
+4. checking_short_vid: checks which videos are short and can disturb model training
+
+5. detailed_test: checks all single videos in one time of all signs. (Did not check it)
+
+6. extract_raw_coordinates: extracts raw coordinates from mp4 video and save them in numpy array. One video, one array
+
+7. model_training: Trains BILSTM model
+
+8. multi_sign_predict: Here we give a video with multiple signs and it extarcts signs and give sentence.
+
+9. preprocess_test: Preprocesses test set. Last 20%. Does the minimum needed
+
+10. preprocess_train: Preprocesses training set. First 80% complete
+
+11. rename_files: Renames videos in sequence for each word
+
+12. single_vid_test: Tests single sign video
+
+13. split_nothing_class: Make a long video for nothing class. Splits it into mutiple short videos

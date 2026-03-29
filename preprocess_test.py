@@ -17,8 +17,8 @@ from keras.utils import to_categorical
 DATA_PATH       = r"D:\Extracted"
 OUTPUT_PATH     = r"D:\Preprocessed"
 
-ACTIONS         = np.array(['I', 'Need', 'Food', 'Water', 'Nothing'])
-SEQUENCE_LENGTH = 142
+ACTIONS         = np.array(['I', 'Need', 'Food', 'Water', 'Nothing','Key','Room'])
+SEQUENCE_LENGTH = 131
 FEATURE_SIZE    = 144
 TEST_SPLIT      = 0.2   # must match train script
 

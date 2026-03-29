@@ -37,4 +37,4 @@ def rename_videos(folder_path, action_name):
 # ============================================================
 # CHANGE THESE TWO LINES ONLY
 # ============================================================
-rename_videos(r"D:\Signs\Water", 'Water')
+rename_videos(r"D:\Signs\Food", 'Food')

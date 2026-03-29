@@ -25,10 +25,10 @@ os.environ['MEDIAPIPE_DISABLE_GPU'] = '1'
 import io
 sys.stderr = io.StringIO()
 
-VIDEO_PATH   = r"D:\Test\2026-03-16 15-09-58.mp4"
-WEIGHTS_PATH = 'model_weights.npy'           # download this from Colab
-SEQUENCE_LENGTH = 142
-ACTIONS      = ['I', 'Need', 'Food', 'Water', 'Nothing']
+VIDEO_PATH   = r"D:\OBS Recordings\2026-03-29 23-43-32.mp4"
+WEIGHTS_PATH = "model_weights.npy"           # download this from Colab
+SEQUENCE_LENGTH = 131
+ACTIONS      = ['I', 'Need', 'Food', 'Water', 'Nothing','Key','Room']
 # ============================================================
 
 USEFUL_POSE = [11, 12, 13, 14, 15, 16]
