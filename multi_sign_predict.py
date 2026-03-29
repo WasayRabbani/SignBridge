@@ -26,7 +26,7 @@ from keras.layers import LSTM, Dense, Bidirectional, Dropout, BatchNormalization
 # ============================================================
 # CONFIGURATION
 # ============================================================
-VIDEO_PATH           = r"D:\OBS Recordings\2026-03-29 23-41-00.mp4"
+VIDEO_PATH           = r"D:\Test\Sentence Level Test\2026-03-29 23-41-00.mp4"
 WEIGHTS_PATH         = 'model_weights.npy'
 SEQUENCE_LENGTH      = 131
 ACTIONS              = ['I', 'Need', 'Food', 'Water', 'Nothing', 'Key', 'Room']
