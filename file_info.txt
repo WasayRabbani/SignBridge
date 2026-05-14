@@ -1,3 +1,19 @@
+1. rename_files
+2. split_nothing_class
+3. check_video_correct
+4. checking_short_vid
+5. extract_raw_coordinates
+6. checking_raw_coordinates_validity
+7. checking_sequence
+8. preprocess_train
+9. preprocess_test
+10. model_training
+11. single_vid_test
+12. multi_sign_predict
+13. detailed_test (optional)
+
+
+
 1. check_video_correct: checks whether video is correctly shot. Checks video hands,pose landmarks
 
 2. checking_raw_coordinates_validity: Shows video's numpy array in video form like coordinates.

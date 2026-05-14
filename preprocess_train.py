@@ -9,6 +9,7 @@ NO DATA LEAKAGE — test videos never touched here
 
 import numpy as np
 import os
+import gc
 from keras.utils import to_categorical
 
 # ============================================================
@@ -17,8 +18,12 @@ from keras.utils import to_categorical
 DATA_PATH       = r"D:\Extracted"
 OUTPUT_PATH     = r"D:\Preprocessed"
 
-ACTIONS         = np.array(['I', 'Need', 'Food', 'Water', 'Nothing','Key','Room'])
-SEQUENCE_LENGTH = 131
+ACTIONS         = np.array(["Bathroom", "Bill", "Bring", "Broken", "Clean", "Cold",
+                             "Dirty", "Find", "Food", "Help", "Hot", "I",
+                             "Key", "Luggage", "Need", "No", "Nothing", "Now",
+                             "Please", "Room", "Towel", "Water"
+])
+SEQUENCE_LENGTH = 122
 FEATURE_SIZE    = 144
 FINAL_FEATURES  = 288
 NOISE_FACTOR    = 0.01
@@ -92,9 +97,9 @@ def pad_or_truncate(sequence, length=SEQUENCE_LENGTH):
 
 def mirror(sequence):
     seq = sequence.copy()
-    seq[:, 0:POSE_END:3]    = -seq[:, 0:POSE_END:3]
-    seq[:, LH_START:LH_END:3] = -seq[:, LH_START:LH_END:3]
-    seq[:, RH_START:RH_END:3] = -seq[:, RH_START:RH_END:3]
+    seq[:, 0:POSE_END:3]       = -seq[:, 0:POSE_END:3]
+    seq[:, LH_START:LH_END:3]  = -seq[:, LH_START:LH_END:3]
+    seq[:, RH_START:RH_END:3]  = -seq[:, RH_START:RH_END:3]
     lh_copy = seq[:, LH_START:LH_END].copy()
     seq[:, LH_START:LH_END] = seq[:, RH_START:RH_END]
     seq[:, RH_START:RH_END] = lh_copy
@@ -181,17 +186,40 @@ for action in ACTIONS:
 
     print(f"  Loaded: {len(train_files)} | After augmentation: {len(train_files) * 5}\n")
 
-X_train = np.array(sequences, dtype=np.float32)
-y_train = to_categorical(labels, num_classes=len(ACTIONS)).astype(np.float32)
+# ============================================================
+# SAVE — RAM-safe order
+# ============================================================
+total_samples = len(sequences)  # save count before del
 
+# step 1: build array as float16 (1.5GB) — avoid 3GB float32 peak
+X_train = np.array(sequences, dtype=np.float16)
+x_shape = X_train.shape         # save shape before del
+
+# step 2: free raw list immediately
+del sequences
+gc.collect()
+
+# step 3: save float16 to disk — training scripts cast to float32 on Colab
 np.save(os.path.join(OUTPUT_PATH, 'X_train.npy'), X_train)
+del X_train
+gc.collect()
+
+# step 4: labels — tiny, no RAM issue
+y_train = to_categorical(labels, num_classes=len(ACTIONS)).astype(np.float32)
+del labels
+gc.collect()
+
 np.save(os.path.join(OUTPUT_PATH, 'y_train.npy'), y_train)
 
+# ============================================================
+# SUMMARY
+# ============================================================
 print("=" * 50)
 print(f"TRAINING SET DONE")
 print(f"  Original loaded   : {total_loaded}")
 print(f"  Augmented added   : {total_augmented}")
-print(f"  Total samples     : {len(sequences)}")
-print(f"  X_train shape     : {X_train.shape}")
+print(f"  Total samples     : {total_samples}")
+print(f"  X_train shape     : {x_shape}")
 print(f"  y_train shape     : {y_train.shape}")
+print(f"  X_train dtype     : float16 on disk (cast to float32 in Colab)")
 print(f"  Saved to          : {OUTPUT_PATH}")

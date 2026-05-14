@@ -1,251 +1,121 @@
-# Hotel Sign Language Recognition System
-### Final Year Project — Sign Language to Text Communication for Hotel Environment
+# SignBridge: Hotel Sign Language Recognition System
+
+A real-time, AI-powered sign language recognition system tailored for hotel environments. SignBridge enables deaf or hard-of-hearing guests to communicate via sign language in front of a camera. The system detects the hand and pose landmarks, classifies the sequence of signs, and reconstructs a sentence.
+
+This repository focuses on the complete **AI Training & Inference Pipeline**—from raw data collection to a functional interactive web application.
 
 ---
 
-## Project Overview
+## ✨ Features
 
-A real-time sign language recognition system designed for hotel environments. A deaf guest performs sign language gestures in front of a camera. The system detects and classifies the signs, forms a natural sentence using an LLM, and sends it to hotel staff. Staff reply via text which is displayed clearly to the guest.
-
----
-
-## System Pipeline
-
-```
-Camera Feed
-    ↓
-MediaPipe (Hand + Pose Landmark Extraction)
-    ↓
-BiLSTM Model (Sign Classification)
-    ↓
-Word Buffer (Sequence Collection)
-    ↓
-LLM - Gemini API (Sentence Formation)
-    ↓
-Manager Screen (Staff Reply via Text)
-    ↓
-Guest Screen (Text Display)
-```
+- **End-to-End Pipeline:** Scripts provided for data cleaning, landmark extraction, preprocessing, augmentation, and model training.
+- **Robust Feature Extraction:** Leverages MediaPipe Holistic to capture 144 facial, pose, and hand landmarks per frame.
+- **Advanced Preprocessing:** Uses interpolation for missing frames, spatial normalization, velocity feature calculation, and dynamic augmentations (Gaussian noise, time-stretching, mirroring).
+- **Continuous Sign Parsing:** Can automatically segment and predict multiple consecutive signs from a single continuous video.
+- **Interactive UI:** Includes a beautiful Streamlit web application (`app.py`) for drag-and-drop video testing and inference visualization.
 
 ---
 
-## Project Status
+## 📦 Setup & Installation
 
-| Phase | Status | Notes |
-|---|---|---|
-| Word finalization | ✅ Done | 15-20 hotel-related signs |
-| Dataset recording | 🔄 In Progress | 250 videos per word, 5 signers |
-| Video quality checking | ✅ Done | Automated checker script |
-| Landmark extraction | ✅ Done | 144 features per frame |
-| Preprocessing | ✅ Done | Normalization + augmentation |
-| BiLSTM training | ⏳ Pending | |
-| Real-time pipeline | ⏳ Pending | |
-| LLM integration | ⏳ Pending | Gemini API |
-| UI / Manager screen | ⏳ Pending | |
+> [!IMPORTANT]
+> A machine with a reasonably modern CPU is sufficient for inference, but a GPU is heavily recommended if you intend to retrain the models.
 
----
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-username/SignBridge.git
+   cd SignBridge
+   ```
 
-## Dataset
+2. **Create a virtual environment:**
+   ```bash
+   python -m venv .venv
+   
+   # On Windows:
+   .venv\Scripts\activate
+   # On macOS/Linux:
+   source .venv/bin/activate
+   ```
 
-### Words (Classes)
-Hotel-related signs including: I, Water, Food, Room, Help, Toilet, Key, Bed, Bill, Towel, Nothing (+ more)
-
-The **Nothing** class covers idle gestures, hair touching, random movements — teaches the model what is NOT a sign.
-
-### Recording Protocol
-- **People:** 5 signers with different hand sizes and signing speeds
-- **Videos per word:** 250 (across all signers)
-- **Structure per video:** Hands at sides → Perform sign → Hands back to sides
-- **Environment:** Plain background, even front lighting, full upper body in frame
-- **Variation:** Fast signs, slow signs, slight left/right position variation
-
-### Folder Structure
-```
-D:\Signs\
-    Water\
-        Water_1.mp4
-        Water_2.mp4
-        ...
-    I\
-        I_1.mp4
-        ...
-```
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 ---
 
-## Scripts
+## 🚀 Quick Start (Testing)
 
-### 1. Video Renaming
-`rename_videos.py`
-Renames raw recorded videos to consistent format: `WordName_1.mp4, WordName_2.mp4`
+The easiest way to see SignBridge in action is by using the provided Streamlit web app. We provide pre-trained LSTM weights for a 22-word hotel-specific vocabulary.
 
-```python
-rename_videos(r"D:\Signs\Water", 'Water')
+### 1. Interactive Web UI
+Launch the interactive web dashboard to upload a video and see real-time extraction and prediction:
+```bash
+streamlit run app.py
 ```
+*This will open the application in your default web browser.*
 
-### 2. Video Quality Checker
-`video_quality_checker.py`
-Checks each video for:
-- Body/elbow out of frame
-- Head position
-- Shoulder visibility
-- Hand detection during signing window (middle 60% of video)
-- Video too short/long
+### 2. Command-Line Multi-Sign Prediction
+To run a continuous multi-sign video directly from your terminal:
+1. Open `multi_sign_predict.py` in your text editor.
+2. Edit the `VIDEO_PATH` variable to point to your test video.
+3. Run the script:
+   ```bash
+   python multi_sign_predict.py
+   ```
 
-```python
-DATA_PATH = r"D:\Signs"
-```
-
-### 3. Landmark Extraction
-`extract_landmarks.py`
-Extracts MediaPipe landmarks from all videos. Saves one `.npy` file per video.
-
-**Features extracted per frame: 144 values**
-- 6 pose landmarks × 3 (x,y,z) = 18 values → shoulders, elbows, wrists only
-- 21 left hand landmarks × 3 = 63 values
-- 21 right hand landmarks × 3 = 63 values
-
-Face and lower body landmarks are intentionally excluded — irrelevant for sign language.
-
-```python
-INPUT_FOLDER  = r"D:\Signs"
-OUTPUT_FOLDER = r"D:\Extracted"
-```
-
-Output structure:
-```
-D:\Extracted\
-    Water\
-        0.npy    # shape: (num_frames, 144)
-        1.npy
-        ...
-```
-
-### 4. Landmark Visualizer
-`visualize_landmarks.py`
-Plays back extracted `.npy` files as dot animation to verify extraction quality.
-- Green dots = pose (shoulders, elbows, wrists)
-- Blue dots = left hand
-- Red dots = right hand
-
-Idle frames should show only green dots. Signing frames should show green + red/blue.
-
-### 5. Preprocessing
-`preprocess.py`
-Full preprocessing pipeline. Each original video becomes 5 training samples via augmentation.
-
-**Pipeline order (order matters):**
-1. Interpolate missing frames (fix MediaPipe detection gaps)
-2. Normalize — position (subtract wrist) + scale (divide by hand size)
-3. Add velocity features (frame-to-frame difference) → 144 + 144 = 288 features
-4. Pad/Truncate to fixed sequence length (60 frames)
-5. Augment — mirror, gaussian noise, time stretch fast (0.8x), time stretch slow (1.2x)
-
-**Output:**
-```
-X.npy — shape: (total_samples, 60, 288)
-y.npy — shape: (total_samples, num_classes)  one-hot encoded
-```
-
-250 videos per word × 5 augmentations = **1250 training samples per word**
-
-```python
-DATA_PATH       = r"D:\Extracted"
-OUTPUT_PATH     = r"D:\Preprocessed"
-SEQUENCE_LENGTH = 60
-ACTIONS         = np.array(['I', 'Water', 'Food', ...])
-```
+### 3. Command-Line Single Sign Prediction
+To test a single, isolated sign:
+1. Open `single_vid_test.py`.
+2. Edit the `VIDEO_PATH` variable.
+3. Run:
+   ```bash
+   python single_vid_test.py
+   ```
 
 ---
 
-## Model — BiLSTM (Pending)
+## 🛠️ Pipeline: Training Your Own Model
 
-- Input shape: `(60, 288)` — 60 frames, 288 features per frame
-- Architecture: Bidirectional LSTM layers + Dense classification head
-- Output: Softmax over N word classes
+If you want to train the model from scratch on your own dataset, follow these sequential steps:
 
----
+### Phase 1: Data Formatting & QA
+Place your raw `.mp4` videos sorted into subfolders by class name.
+- **`rename_files.py`**: Standardizes your raw video filenames into a consistent indexed format (e.g., `Water_1.mp4`).
+- **`checking_short_vid.py`**: Scans the dataset to identify videos that are too short to contain meaningful sign gestures.
+- **`split_nothing_class.py`**: Automatically splits long, continuous idle recordings into multiple short clips for the "Nothing" class.
 
-## Real-Time Pipeline — Logic (Pending)
+### Phase 2: Landmark Extraction
+- **`extract_raw_coordinates.py`**: A multiprocessing script that runs MediaPipe Holistic across your video dataset, saving the raw landmarks as `.npy` arrays.
+- **`checking_raw_coordinates_validity.py`**: (Optional) Re-renders the extracted `.npy` coordinates onto a blank video canvas to visually verify extraction quality.
+- **`checking_sequence.py`**: Calculates the average sequence frame length of your dataset to help you set an optimal `SEQUENCE_LENGTH`.
 
-```python
-word_buffer = []
-current_word = None
-side_counter = 0
-SIDE_THRESHOLD = 15  # frames of hands-at-sides = word boundary
+### Phase 3: Preprocessing
+> [!WARNING]  
+> The preprocessing pipeline rigorously prevents data leakage by separating the test split *before* augmentation.
 
-# When hands return to sides after a sign → word is complete → save to buffer
-# When buffer pause exceeds 60 frames → send word list to LLM → display sentence
-```
+- **`preprocess_train.py`**: Takes the first 80% of data per class, interpolates missing frames, normalizes coordinates, calculates velocities, and pads/truncates. It then applies a **5x data augmentation** multiplier (noise, fast/slow time stretch, horizontal mirror) and saves `X_train.npy` and `y_train.npy`.
+- **`preprocess_test.py`**: Takes the remaining 20% of data, applies only the basic formatting (NO augmentation), and saves `X_test.npy` and `y_test.npy` to ensure realistic validation accuracy.
 
-### Word → Sentence (LLM)
-Word buffer like `["I", "want", "room"]` sent to Gemini API with hotel-scoped system prompt.
-LLM returns natural sentence: `"I would like to book a room."`
-
----
-
-## Generalization Strategy
-
-| Technique | Where Applied | Benefit |
-|---|---|---|
-| 5 diverse signers | Recording | Different hand sizes and speeds |
-| Speed variation | Recording | Fast + slow signs per word |
-| Position normalization | Preprocessing | Signer position in frame irrelevant |
-| Scale normalization | Preprocessing | Hand size differences removed |
-| Velocity features | Preprocessing | Movement dynamics captured |
-| Mirror augmentation | Preprocessing | Left/right hand variation |
-| Noise augmentation | Preprocessing | Natural tremor simulation |
-| Time stretch augmentation | Preprocessing | Speed variation without re-recording |
-| Leave-one-person-out test | Evaluation | True generalization validation |
+### Phase 4: Training & Validation
+- **`LSTM_Model_Training.ipynb`**: A Jupyter Notebook that loads the preprocessed data, compiles the LSTM/BiLSTM architecture, and trains the model. It also generates evaluation metrics (Confusion Matrix, Classification Report) and exports the final weights (`lstm_weights.npy` and `bilstm_weights.npy`).
 
 ---
 
-## Tech Stack
+## 🧠 Model Architecture
 
-| Component | Technology |
-|---|---|
-| Landmark extraction | MediaPipe Holistic |
-| Model | TensorFlow / Keras BiLSTM |
-| Sentence formation | Gemini API |
-| Real-time capture | OpenCV |
-| Data processing | NumPy |
-| UI | TBD |
+The default `LSTM` architecture processes sequences of 122 frames with 288 features each (spatial coordinates + velocities):
 
----
-
-## Requirements
-
-```
-tensorflow
-mediapipe
-opencv-python
-numpy
-google-generativeai
-```
+- `Input Layer (122, 288)`
+- `LSTM (64 units, return_sequences=True)` + `Dropout(0.3)`
+- `LSTM (128 units, return_sequences=True)` + `Dropout(0.3)`
+- `LSTM (64 units, return_sequences=False)`
+- `BatchNormalization` + `Dense (64 units)` + `Dropout(0.3)`
+- `Dense (Softmax Output)`
 
 ---
 
-## To Do (Next Steps)
+## 🔮 Future Roadmap
 
-- [ ] Finish recording all word datasets
-- [ ] Run extraction on full dataset
-- [ ] Run preprocessing — verify X.npy and y.npy shapes
-- [ ] Build and train BiLSTM model
-- [ ] Test leave-one-person-out generalization
-- [ ] Build real-time detection pipeline
-- [ ] Integrate Gemini API for sentence formation
-- [ ] Build two-screen UI (guest + manager)
-- [ ] End-to-end testing
-
----
-
-## Known Limitations
-
-- Model trained on specific signers — may need fine-tuning for completely new users
-- Hotel vocabulary limited to trained words only
-- Manager replies kept short and simple for deaf guest readability
-- Requires adequate front lighting for reliable MediaPipe detection
-
----
-
-*Last updated: Dataset recording and preprocessing phase*
+- **LLM Integration:** Connect the predicted sequence of isolated words (e.g., `["I", "Need", "Room", "Clean"]`) to a Large Language Model (like Google Gemini or GPT-4) to generate grammatically fluid natural language output.
+- **Live Camera Feed:** Re-enable live camera Streamlit components once deployed in a controlled physical hotel kiosk.

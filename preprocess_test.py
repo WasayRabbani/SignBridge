@@ -9,6 +9,7 @@ This gives you TRUE test accuracy with no data leakage.
 
 import numpy as np
 import os
+import gc
 from keras.utils import to_categorical
 
 # ============================================================
@@ -17,11 +18,14 @@ from keras.utils import to_categorical
 DATA_PATH       = r"D:\Extracted"
 OUTPUT_PATH     = r"D:\Preprocessed"
 
-ACTIONS         = np.array(['I', 'Need', 'Food', 'Water', 'Nothing','Key','Room'])
-SEQUENCE_LENGTH = 131
+ACTIONS         = np.array(["Bathroom", "Bill", "Bring", "Broken", "Clean", "Cold",
+                             "Dirty", "Find", "Food", "Help", "Hot", "I",
+                             "Key", "Luggage", "Need", "No", "Nothing", "Now",
+                             "Please", "Room", "Towel", "Water"
+])
+SEQUENCE_LENGTH = 122
 FEATURE_SIZE    = 144
-TEST_SPLIT      = 0.2   # must match train script
-
+TEST_SPLIT      = 0.2
 POSE_END  = 18
 LH_START  = 18
 LH_END    = 81
@@ -117,7 +121,6 @@ for action in ACTIONS:
     for npy_file in test_files:
         raw = np.load(os.path.join(action_path, npy_file))
 
-        # Same preprocessing as training — NO augmentation
         seq = interpolate_missing(raw)
         seq = normalize(seq)
         seq = add_velocity(seq)
@@ -126,20 +129,38 @@ for action in ACTIONS:
         sequences.append(seq)
         labels.append(label_map[action])
         total += 1
-        print(f"  ✅ {npy_file}")
+        print(f"  {npy_file}")
 
     print()
 
-X_test = np.array(sequences, dtype=np.float32)
-y_test = to_categorical(labels, num_classes=len(ACTIONS)).astype(np.float32)
+# ============================================================
+# SAVE — same safe pattern as train (float16 → disk)
+# ============================================================
+total_samples = len(sequences)
+
+X_test  = np.array(sequences, dtype=np.float16)
+x_shape = X_test.shape
+del sequences
+gc.collect()
 
 np.save(os.path.join(OUTPUT_PATH, 'X_test.npy'), X_test)
+del X_test
+gc.collect()
+
+y_test = to_categorical(labels, num_classes=len(ACTIONS)).astype(np.float32)
+del labels
+gc.collect()
+
 np.save(os.path.join(OUTPUT_PATH, 'y_test.npy'), y_test)
 
+# ============================================================
+# SUMMARY
+# ============================================================
 print("=" * 50)
 print(f"TEST SET DONE")
-print(f"  Total test samples : {total}")
-print(f"  X_test shape       : {X_test.shape}")
+print(f"  Total test samples : {total_samples}")
+print(f"  X_test shape       : {x_shape}")
 print(f"  y_test shape       : {y_test.shape}")
+print(f"  X_test dtype       : float16 on disk (cast to float32 in Colab)")
 print(f"  Saved to           : {OUTPUT_PATH}")
 print(f"\nThese are UNSEEN videos — accuracy on this is your REAL accuracy")

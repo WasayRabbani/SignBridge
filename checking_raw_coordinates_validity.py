@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 
 # --- CONFIGURATION ---
-NPY_FILE = r"D:\Extracted\Water\Water_56.npy"
+NPY_FILE = r"D:\Extracted\Towel\Towel_140.npy"
 WIDTH, HEIGHT = 640, 480
 FPS_DELAY = 30  # milliseconds between frames
 

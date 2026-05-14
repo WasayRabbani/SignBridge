@@ -2,9 +2,8 @@
 # Python cache
 # =====================
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
 
 # =====================
 # Virtual environments
@@ -12,4 +11,34 @@ __pycache__/
 .venv/
 .env/
 env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 .vscode/
+
+# =====================
+# IDE and OS files
+# =====================
+.idea/
+.DS_Store
+Thumbs.db
+
+# =====================
+# Data, Weights, and Media
+# =====================
+*.npy
+*.h5
+*.pkl
+*.weights.h5
+*.mp4
+*.avi
+*.mov
+
+# =====================
+# External Directories 
+# (If data is stored locally)
+# =====================
+Signs/
+Extracted/
+Preprocessed/
