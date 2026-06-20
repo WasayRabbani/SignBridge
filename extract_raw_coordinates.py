@@ -2,11 +2,23 @@
 Incremental Landmark Extraction — Multiprocessing Version
 """
 
-import cv2
+import cv2 
+# Library for handling images and videos.
+
 import numpy as np
+#  A library for dealing with large lists of numbers (called "arrays") and doing fast math.
+
 import os
+#  Allows Python to talk directly to your computer's file system (Windows).
+
 import mediapipe as mp
+# The AI brain that detects human body shapes.
+
 from multiprocessing import Pool, cpu_count
+# Allows your computer to do multiple things at the same time (multitasking).
+
+
+
 
 # ============================================================
 # CONFIGURATION
@@ -15,6 +27,19 @@ INPUT_FOLDER  = r"D:\Signs"
 OUTPUT_FOLDER = r"D:\Extracted"
 
 USEFUL_POSE = [11, 12, 13, 14, 15, 16]
+""" So mediapipe  uses pose model to extract the coordinates. In pose model there are total 33 coordinates numbered from 0 to 32.
+
+11: Left Shoulder
+12: Right Shoulder
+13: Left Elbow
+14: Right Elbow
+15: Left Wrist
+16: Right Wrist
+
+Pose model will extract all the coordinates so we are making the data cleaner and faster to process by only using these ones."""
+
+
+
 NUM_WORKERS = 6  # use half your cores — MediaPipe is already CPU-heavy per worker
 
 
