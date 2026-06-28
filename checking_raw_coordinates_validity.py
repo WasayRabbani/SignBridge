@@ -1,5 +1,5 @@
 """Visualize extracted landmarks from new format (144 values, one npy per video)
-It shows npy coordinates in lamdmarks form"""
+It shows npby coordinates in lamdmarks form"""
 # Claude
 
 import cv2

@@ -45,23 +45,51 @@ NUM_WORKERS = 6  # use half your cores — MediaPipe is already CPU-heavy per wo
 
 def extract_landmarks(results):
     if results.pose_landmarks:
-        pose = np.array([
-            [results.pose_landmarks.landmark[i].x,
-             results.pose_landmarks.landmark[i].y,
-             results.pose_landmarks.landmark[i].z]
-            for i in USEFUL_POSE
-        ]).flatten()
+        pose = []
+
+        for i in USEFUL_POSE:
+            landmark = results.pose_landmarks.landmark[i]
+
+            pose.append(landmark.x)
+            pose.append(landmark.y)
+            pose.append(landmark.z)
+
+        pose = np.array(pose)
+
     else:
         pose = np.zeros(18)
 
-    lh = np.array([[res.x, res.y, res.z] for res in results.left_hand_landmarks.landmark]).flatten() \
-        if results.left_hand_landmarks else np.zeros(63)
+    # Left hand
+    if results.left_hand_landmarks:
+        lh = []
 
-    rh = np.array([[res.x, res.y, res.z] for res in results.right_hand_landmarks.landmark]).flatten() \
-        if results.right_hand_landmarks else np.zeros(63)
+        for landmark in results.left_hand_landmarks.landmark:
+            lh.append(landmark.x)
+            lh.append(landmark.y)
+            lh.append(landmark.z)
 
-    return np.concatenate([pose, lh, rh])
+        lh = np.array(lh)
+    else:
+        lh = np.zeros(63)
 
+
+    # Right hand
+    if results.right_hand_landmarks:
+        rh = []
+
+        for landmark in results.right_hand_landmarks.landmark:
+            rh.append(landmark.x)
+            rh.append(landmark.y)
+            rh.append(landmark.z)
+
+        rh = np.array(rh)
+    else:
+        rh = np.zeros(63)
+
+
+    # Combine pose, left hand, and right hand
+    features = np.concatenate([pose, lh, rh])
+    return features
 
 def get_video_number(filename):
     name = os.path.splitext(filename)[0]
