@@ -18,11 +18,21 @@ from keras.utils import to_categorical
 DATA_PATH       = r"D:\Extracted"
 OUTPUT_PATH     = r"D:\Preprocessed"
 
-ACTIONS         = np.array(["Bathroom", "Bill", "Bring", "Broken", "Clean", "Cold",
-                             "Dirty", "Find", "Food", "Help", "Hot", "I",
-                             "Key", "Luggage", "Need", "No", "Nothing", "Now",
-                             "Please", "Room", "Towel", "Water"
-])
+# Dynamically detect words and preserve old indices!
+ACTIONS_FILE = "actions_list.npy"
+if os.path.exists(ACTIONS_FILE):
+    old_actions = list(np.load(ACTIONS_FILE, allow_pickle=True))
+else:
+    old_actions = []
+
+word_folders = [f for f in os.listdir(DATA_PATH) if os.path.isdir(os.path.join(DATA_PATH, f))]
+
+# Append any new words to the end
+for folder in word_folders:
+    if folder not in old_actions:
+        old_actions.append(folder)
+
+ACTIONS = np.array(old_actions)
 SEQUENCE_LENGTH = 122
 FEATURE_SIZE    = 144
 TEST_SPLIT      = 0.2

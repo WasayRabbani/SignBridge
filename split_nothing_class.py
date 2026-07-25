@@ -3,6 +3,7 @@ Nothing Class Video Splitter
 Records or splits a long video into short random-length clips automatically.
 No manual cropping needed.
 
+
 Two modes:
     1. SPLIT MODE  — split an existing long video into clips
     2. RECORD MODE — record directly from camera and auto-split on the fly

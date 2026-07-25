@@ -11,18 +11,30 @@ import numpy as np
 import os
 import gc
 from keras.utils import to_categorical
-
+    
 # ============================================================
 # CONFIGURATION
 # ============================================================
 DATA_PATH       = r"D:\Extracted"
 OUTPUT_PATH     = r"D:\Preprocessed"
 
-ACTIONS         = np.array(["Bathroom", "Bill", "Bring", "Broken", "Clean", "Cold",
-                             "Dirty", "Find", "Food", "Help", "Hot", "I",
-                             "Key", "Luggage", "Need", "No", "Nothing", "Now",
-                             "Please", "Room", "Towel", "Water"
-])
+# Dynamically detect words and preserve old indices!
+ACTIONS_FILE = "actions_list.npy"
+if os.path.exists(ACTIONS_FILE):
+    old_actions = list(np.load(ACTIONS_FILE, allow_pickle=True))
+else:
+    old_actions = []
+
+word_folders = [f for f in os.listdir(DATA_PATH) if os.path.isdir(os.path.join(DATA_PATH, f))]
+
+# Append any new words to the end so old integer mappings stay perfectly aligned
+for folder in word_folders:
+    if folder not in old_actions:
+        old_actions.append(folder)
+
+ACTIONS = np.array(old_actions)
+np.save(ACTIONS_FILE, ACTIONS)
+print(f"Loaded {len(ACTIONS)} words (Preserved old order!): {ACTIONS}")
 SEQUENCE_LENGTH = 122
 FEATURE_SIZE    = 144
 FINAL_FEATURES  = 288
@@ -124,12 +136,33 @@ def time_stretch(sequence, rate=0.8):
 # ============================================================
 os.makedirs(OUTPUT_PATH, exist_ok=True)
 label_map  = {label: num for num, label in enumerate(ACTIONS)}
-sequences  = []
-labels     = []
 total_loaded    = 0
 total_augmented = 0
 
 print("TRAINING SET PREPROCESSING\n")
+
+# ── PASS 1: Count total samples so we can pre-allocate memmap ──
+total_samples = 0
+for action in ACTIONS:
+    action_path = os.path.join(DATA_PATH, action)
+    if not os.path.exists(action_path):
+        continue
+    npy_files = [f for f in os.listdir(action_path) if f.endswith('.npy')]
+    split_idx = int(len(npy_files) * (1 - TEST_SPLIT))
+    total_samples += split_idx * 5  # 5 augmentations per file
+
+print(f"Total training samples (with augmentation): {total_samples}\n")
+
+# ── PASS 2: Write directly to disk via memmap — no RAM spike ──
+X_train_path = os.path.join(OUTPUT_PATH, 'X_train.npy')
+X_memmap = np.lib.format.open_memmap(
+    X_train_path, mode='w+',
+    dtype=np.float16,
+    shape=(total_samples, SEQUENCE_LENGTH, FINAL_FEATURES)
+)
+
+labels  = []
+row_idx = 0
 
 for action in ACTIONS:
     action_path = os.path.join(DATA_PATH, action)
@@ -155,60 +188,30 @@ for action in ACTIONS:
         seq = add_velocity(seq)
         seq = pad_or_truncate(seq)
 
-        # Original
-        sequences.append(seq)
-        labels.append(label_map[action])
+        # Write each augmentation directly to disk
+        X_memmap[row_idx] = seq.astype(np.float16);          labels.append(label_map[action]); row_idx += 1
+        X_memmap[row_idx] = mirror(seq).astype(np.float16);  labels.append(label_map[action]); row_idx += 1
+        X_memmap[row_idx] = add_noise(seq).astype(np.float16); labels.append(label_map[action]); row_idx += 1
+
+        raw_fast = pad_or_truncate(add_velocity(normalize(time_stretch(raw, rate=0.8))))
+        X_memmap[row_idx] = raw_fast.astype(np.float16);     labels.append(label_map[action]); row_idx += 1
+
+        raw_slow = pad_or_truncate(add_velocity(normalize(time_stretch(raw, rate=1.2))))
+        X_memmap[row_idx] = raw_slow.astype(np.float16);     labels.append(label_map[action]); row_idx += 1
+
         total_loaded += 1
 
-        # Mirror
-        sequences.append(mirror(seq))
-        labels.append(label_map[action])
-        total_augmented += 1
-
-        # Noise
-        sequences.append(add_noise(seq))
-        labels.append(label_map[action])
-        total_augmented += 1
-
-        # Time stretch fast
-        raw_fast = time_stretch(raw, rate=0.8)
-        raw_fast = pad_or_truncate(add_velocity(normalize(raw_fast)))
-        sequences.append(raw_fast)
-        labels.append(label_map[action])
-        total_augmented += 1
-
-        # Time stretch slow
-        raw_slow = time_stretch(raw, rate=1.2)
-        raw_slow = pad_or_truncate(add_velocity(normalize(raw_slow)))
-        sequences.append(raw_slow)
-        labels.append(label_map[action])
-        total_augmented += 1
-
+    total_augmented += len(train_files) * 4
     print(f"  Loaded: {len(train_files)} | After augmentation: {len(train_files) * 5}\n")
 
-# ============================================================
-# SAVE — RAM-safe order
-# ============================================================
-total_samples = len(sequences)  # save count before del
-
-# step 1: build array as float16 (1.5GB) — avoid 3GB float32 peak
-X_train = np.array(sequences, dtype=np.float16)
-x_shape = X_train.shape         # save shape before del
-
-# step 2: free raw list immediately
-del sequences
+# Flush memmap to disk
+del X_memmap
 gc.collect()
 
-# step 3: save float16 to disk — training scripts cast to float32 on Colab
-np.save(os.path.join(OUTPUT_PATH, 'X_train.npy'), X_train)
-del X_train
-gc.collect()
-
-# step 4: labels — tiny, no RAM issue
+# Save labels
 y_train = to_categorical(labels, num_classes=len(ACTIONS)).astype(np.float32)
 del labels
 gc.collect()
-
 np.save(os.path.join(OUTPUT_PATH, 'y_train.npy'), y_train)
 
 # ============================================================
@@ -219,7 +222,7 @@ print(f"TRAINING SET DONE")
 print(f"  Original loaded   : {total_loaded}")
 print(f"  Augmented added   : {total_augmented}")
 print(f"  Total samples     : {total_samples}")
-print(f"  X_train shape     : {x_shape}")
+print(f"  X_train shape     : ({total_samples}, {SEQUENCE_LENGTH}, {FINAL_FEATURES})")
 print(f"  y_train shape     : {y_train.shape}")
 print(f"  X_train dtype     : float16 on disk (cast to float32 in Colab)")
-print(f"  Saved to          : {OUTPUT_PATH}")
+print(f"  Saved to          : {OUTPUT_PATH}")
